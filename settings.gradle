@@ -1,0 +1,3 @@
+rootProject.name = 'spring-security-tutorial'
+
+include 'spring-security-client'
