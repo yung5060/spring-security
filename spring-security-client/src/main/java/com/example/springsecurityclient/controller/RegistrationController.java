@@ -3,6 +3,7 @@ package com.example.springsecurityclient.controller;
 import com.example.springsecurityclient.entity.User;
 import com.example.springsecurityclient.entity.VerificationToken;
 import com.example.springsecurityclient.event.RegistrationCompleteEvent;
+import com.example.springsecurityclient.model.PasswordModel;
 import com.example.springsecurityclient.model.UserModel;
 import com.example.springsecurityclient.service.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @Slf4j
@@ -59,11 +62,61 @@ public class RegistrationController {
         return "Verification Link Sent";
     }
 
-    private void resendVerificationTokenMail(User user, String applicationUrl, VerificationToken verificationToken) {
+    @PostMapping("/resetPassword")
+    public String resetPassword(@RequestBody PasswordModel passwordModel, HttpServletRequest request) {
+        User user = userService.findUserByEmail(passwordModel.getEmail());
+        String url = "";
+        if(user != null) {
+            String token = UUID.randomUUID().toString();
+            userService.createPasswordResetTokenForUser(user, token);
+            url = passwordResetTokenMail(user, applicationUrl(request), token);
+        }
+        return url;
+    }
+
+    @PostMapping("/savePassword")
+    public String savePassword(@RequestParam("token") String token, @RequestBody PasswordModel passwordModel) {
+        String result = userService.validatePasswordResetToken(token);
+        if(!result.equalsIgnoreCase("valid")) {
+            return "Invalid Token";
+        }
+        Optional<User> user = userService.getUserByPasswordResetToken(token);
+        if(user.isPresent()) {
+            userService.changePassword(user.get(), passwordModel.getNewPassword());
+            return "Password Reset Successful";
+        }
+        else {
+            return "Invalid Token";
+        }
+    }
+
+    @PostMapping("/changePassword")
+    public String changePassword(@RequestBody PasswordModel passwordModel) {
+        User user = userService.findUserByEmail(passwordModel.getEmail());
+        if(!userService.checkIfValidOldPassword(user, passwordModel.getOldPassword())) {
+            return "Invalid Old Password";
+        }
+
+        userService.changePassword(user, passwordModel.getNewPassword());
+
+        return "Password Changed Successfully";
+    }
+
+    private String passwordResetTokenMail(User user, String applicationUrl, String token) {
+        String url = applicationUrl + "/savePassword?token=" + token;
+
+        //send verification email
+        log.info("Click the link to reset your account password: {}", url);
+
+        return url;
+    }
+
+    private String resendVerificationTokenMail(User user, String applicationUrl, VerificationToken verificationToken) {
         String url = applicationUrl + "/verifyRegistration?token=" + verificationToken.getToken();
 
         //send verification email
         log.info("Click the link to verify your account; {}", url);
+        return url;
     }
 
     private String applicationUrl(HttpServletRequest request) {
