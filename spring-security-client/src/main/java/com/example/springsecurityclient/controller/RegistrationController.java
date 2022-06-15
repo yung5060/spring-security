@@ -25,11 +25,6 @@ public class RegistrationController {
     @Autowired
     private ApplicationEventPublisher publisher;
 
-    @GetMapping("/hello")
-    public String hello() {
-        return "Hello, this is my first try in Spring Security!";
-    }
-
     @PostMapping("/register")
     public String registerUser(@RequestBody UserModel userModel, final HttpServletRequest request) {
 

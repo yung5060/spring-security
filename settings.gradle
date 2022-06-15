@@ -1,3 +1,4 @@
 rootProject.name = 'spring-security-tutorial'
 
 include 'spring-security-client'
+include 'Oauth-authorization-server'
